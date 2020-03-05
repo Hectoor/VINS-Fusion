@@ -112,7 +112,7 @@ class Estimator
 
     Matrix3d ric[2];
     Vector3d tic[2];
-
+    // 全都是WINDOW_SIZE+1
     Vector3d        Ps[(WINDOW_SIZE + 1)];
     Vector3d        Vs[(WINDOW_SIZE + 1)];
     Matrix3d        Rs[(WINDOW_SIZE + 1)];
@@ -135,9 +135,9 @@ class Estimator
     int sum_of_outlier, sum_of_back, sum_of_front, sum_of_invalid;
     int inputImageCnt;
 
-    FeatureManager f_manager;
+    FeatureManager f_manager;   //实例化特征管理器对象
     MotionEstimator m_estimator;
-    InitialEXRotation initial_ex_rotation;
+    InitialEXRotation initial_ex_rotation; // 实例化外参初始化对象
 
     bool first_imu;
     bool is_valid, is_key;

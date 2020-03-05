@@ -58,7 +58,7 @@ void PoseGraph::setIMUFlag(bool _use_imu)
     }
 
 }
-
+//加载词袋模型
 void PoseGraph::loadVocabulary(std::string voc_path)
 {
     voc = new BriefVocabulary(voc_path);
@@ -893,8 +893,7 @@ void PoseGraph::updatePath()
     publish();
     m_keyframelist.unlock();
 }
-
-
+//保存位姿图
 void PoseGraph::savePoseGraph()
 {
     m_keyframelist.lock();
@@ -950,6 +949,7 @@ void PoseGraph::savePoseGraph()
     printf("save pose graph time: %f s\n", tmp_t.toc() / 1000);
     m_keyframelist.unlock();
 }
+//加载位姿地图
 void PoseGraph::loadPoseGraph()
 {
     TicToc tmp_t;

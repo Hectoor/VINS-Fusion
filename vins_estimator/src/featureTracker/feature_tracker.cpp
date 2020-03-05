@@ -90,7 +90,7 @@ double FeatureTracker::distance(cv::Point2f &pt1, cv::Point2f &pt2)
     double dy = pt1.y - pt2.y;
     return sqrt(dx * dx + dy * dy);
 }
-
+//跟踪
 map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackImage(double _cur_time, const cv::Mat &_img, const cv::Mat &_img1)
 {
     TicToc t_r;

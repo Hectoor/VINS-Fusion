@@ -15,7 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
     roslib
     )
 
-find_package(OpenCV)
+find_package(OpenCV 3.4.7 REQUIRED)
 
 
 find_package(Ceres REQUIRED)

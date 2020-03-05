@@ -9,10 +9,10 @@
 
 #include "parameters.h"
 
-double INIT_DEPTH;
-double MIN_PARALLAX;
-double ACC_N, ACC_W;
-double GYR_N, GYR_W;
+double INIT_DEPTH;      //初始化深度
+double MIN_PARALLAX;    //最小时差
+double ACC_N, ACC_W;    //加速度偏移和初始噪声
+double GYR_N, GYR_W;    //
 
 std::vector<Eigen::Matrix3d> RIC;
 std::vector<Eigen::Vector3d> TIC;
@@ -62,9 +62,10 @@ T readParam(ros::NodeHandle &n, std::string name)
     }
     return ans;
 }
-
+// 读取配置文件的各种参数，比如相机内参，相机与IMU的外参等等
 void readParameters(std::string config_file)
 {
+    //1.打开文件 只读模式
     FILE *fh = fopen(config_file.c_str(),"r");
     if(fh == NULL){
         ROS_WARN("config_file dosen't exist; wrong config_file path");
@@ -78,7 +79,7 @@ void readParameters(std::string config_file)
     {
         std::cerr << "ERROR: Wrong path to settings" << std::endl;
     }
-
+    // 把文件相应的参数传到程序的变量中
     fsSettings["image0_topic"] >> IMAGE0_TOPIC;
     fsSettings["image1_topic"] >> IMAGE1_TOPIC;
     MAX_CNT = fsSettings["max_cnt"];
@@ -88,13 +89,14 @@ void readParameters(std::string config_file)
     FLOW_BACK = fsSettings["flow_back"];
 
     MULTIPLE_THREAD = fsSettings["multiple_thread"];
-
+    //是否使用IMU
     USE_IMU = fsSettings["imu"];
     printf("USE_IMU: %d\n", USE_IMU);
     if(USE_IMU)
     {
         fsSettings["imu_topic"] >> IMU_TOPIC;
         printf("IMU_TOPIC: %s\n", IMU_TOPIC.c_str());
+        //把这些信息读进来
         ACC_N = fsSettings["acc_n"];
         ACC_W = fsSettings["acc_w"];
         GYR_N = fsSettings["gyr_n"];
@@ -107,41 +109,46 @@ void readParameters(std::string config_file)
     MIN_PARALLAX = fsSettings["keyframe_parallax"];
     MIN_PARALLAX = MIN_PARALLAX / FOCAL_LENGTH;
 
+    //数据输出的path
     fsSettings["output_path"] >> OUTPUT_FOLDER;
     VINS_RESULT_PATH = OUTPUT_FOLDER + "/vio.csv";
     std::cout << "result path " << VINS_RESULT_PATH << std::endl;
     std::ofstream fout(VINS_RESULT_PATH, std::ios::out);
     fout.close();
-
+    //IMU和CAMERA的外部参数，ESTIMATE_EXTRINSIC是在一个config文件里声明的，如果选择2的话代表不确定
     ESTIMATE_EXTRINSIC = fsSettings["estimate_extrinsic"];
     if (ESTIMATE_EXTRINSIC == 2)
     {
         ROS_WARN("have no prior about extrinsic param, calibrate extrinsic param");
+        // 外参的旋转和平移 一般指的是左相机和IMU
         RIC.push_back(Eigen::Matrix3d::Identity());
         TIC.push_back(Eigen::Vector3d::Zero());
         EX_CALIB_RESULT_PATH = OUTPUT_FOLDER + "/extrinsic_parameter.csv";
     }
     else 
     {
+        //等于1就是有一个初始化的外参，但不是那么精确，系统会帮你自动优化
         if ( ESTIMATE_EXTRINSIC == 1)
         {
             ROS_WARN(" Optimize extrinsic param around initial guess!");
             EX_CALIB_RESULT_PATH = OUTPUT_FOLDER + "/extrinsic_parameter.csv";
         }
+        // 完全信任这些参数，拿来就用不需要在线标定
         if (ESTIMATE_EXTRINSIC == 0)
             ROS_WARN(" fix extrinsic param ");
 
         cv::Mat cv_T;
         fsSettings["body_T_cam0"] >> cv_T;
         Eigen::Matrix4d T;
+        // 把矩阵转成eigen
         cv::cv2eigen(cv_T, T);
+        //把外参的旋转和平移传入变量中
         RIC.push_back(T.block<3, 3>(0, 0));
         TIC.push_back(T.block<3, 1>(0, 3));
     } 
-    
+    // 相机个数 判断是否是1或2
     NUM_OF_CAM = fsSettings["num_of_cam"];
     printf("camera number %d\n", NUM_OF_CAM);
-
     if(NUM_OF_CAM != 1 && NUM_OF_CAM != 2)
     {
         printf("num_of_cam should be 1 or 2\n");
@@ -188,7 +195,7 @@ void readParameters(std::string config_file)
     ROW = fsSettings["image_height"];
     COL = fsSettings["image_width"];
     ROS_INFO("ROW: %d COL: %d ", ROW, COL);
-
+    //如果不适用IMU
     if(!USE_IMU)
     {
         ESTIMATE_EXTRINSIC = 0;

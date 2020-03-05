@@ -61,7 +61,7 @@ MatrixXd TangentBasis(Vector3d &g0)
     bc.block<3, 1>(0, 1) = c;
     return bc;
 }
-
+//重力向量优化
 void RefineGravity(map<double, ImageFrame> &all_image_frame, Vector3d &g, VectorXd &x)
 {
     Vector3d g0 = g.normalized() * G.norm();

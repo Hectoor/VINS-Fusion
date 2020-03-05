@@ -10,7 +10,7 @@
  *******************************************************/
 
 #include "initial_ex_rotation.h"
-
+//构造函数
 InitialEXRotation::InitialEXRotation(){
     frame_count = 0;
     Rc.push_back(Matrix3d::Identity());
@@ -18,30 +18,41 @@ InitialEXRotation::InitialEXRotation(){
     Rimu.push_back(Matrix3d::Identity());
     ric = Matrix3d::Identity();
 }
-
+//执行标定程序，目的是得到相机与IMU的外参
+//bk-bk+1是由积分得到，ck到ck+1是由两帧之间的八点法得到的
+//q(c~b) * q(bk~bk+1) = q(ck~ck+1)*q(c~b) --->q(c~b) * q(bk~bk+1) - q(ck~ck+1)*q(c~b) = 0
 bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> corres, Quaterniond delta_q_imu, Matrix3d &calib_ric_result)
 {
     frame_count++;
+    //Rc代表两帧相机之间的旋转 solveRelativeR()函数可以根据两帧角点算出两帧之间的旋转(8点法)
     Rc.push_back(solveRelativeR(corres));
+    //Rimu代表两帧图像帧时长的IMU积分（旋转） 使用toRotationMatrix转成旋转矩阵的格式
     Rimu.push_back(delta_q_imu.toRotationMatrix());
+    // 估算的外参旋转的逆 × IMU旋转四元数 × 外参旋转 ≈ 两帧图像的旋转，即Rc
     Rc_g.push_back(ric.inverse() * delta_q_imu * ric);
-
+    //动态Matrix
     Eigen::MatrixXd A(frame_count * 4, 4);
     A.setZero();
     int sum_ok = 0;
+    //遍历滑窗
     for (int i = 1; i <= frame_count; i++)
     {
+
+        //上面说到，Rc_g≈两帧图像的旋转 ，可以与Rc构建残差
         Quaterniond r1(Rc[i]);
         Quaterniond r2(Rc_g[i]);
-
+        //这里就是计算Rc_g和Rc相差多少度 相差太大的话Huber权重就低
+        //angularDistance函数是eigen下的函数，可以计算两个四元数的角度
         double angular_distance = 180 / M_PI * r1.angularDistance(r2);
         ROS_DEBUG(
             "%d %f", i, angular_distance);
-
+        //huber核函数，用于计算加权，残差相差太大权重就降低，这里的5是阈值
         double huber = angular_distance > 5.0 ? 5.0 / angular_distance : 1.0;
         ++sum_ok;
-        Matrix4d L, R;
 
+        // 四元数的左乘和右乘
+        Matrix4d L, R;
+        //求左乘矩阵
         double w = Quaterniond(Rc[i]).w();
         Vector3d q = Quaterniond(Rc[i]).vec();
         L.block<3, 3>(0, 0) = w * Matrix3d::Identity() + Utility::skewSymmetric(q);
@@ -49,6 +60,7 @@ bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> c
         L.block<1, 3>(3, 0) = -q.transpose();
         L(3, 3) = w;
 
+        //求右乘矩阵
         Quaterniond R_ij(Rimu[i]);
         w = R_ij.w();
         q = R_ij.vec();
@@ -60,14 +72,17 @@ bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> c
         A.block<4, 4>((i - 1) * 4, 0) = huber * (L - R);
     }
 
+    //对A矩阵做SVD分解 最小二乘解即为最小奇异值对应V的特征向量
     JacobiSVD<MatrixXd> svd(A, ComputeFullU | ComputeFullV);
     Matrix<double, 4, 1> x = svd.matrixV().col(3);
     Quaterniond estimated_R(x);
+    //这里给ric赋值为估计的外参
     ric = estimated_R.toRotationMatrix().inverse();
     //cout << svd.singularValues().transpose() << endl;
     //cout << ric << endl;
     Vector3d ric_cov;
     ric_cov = svd.singularValues().tail<3>();
+    //迭代大于WINDOWS_SIZE次，当奇异值大于0.25退出标定
     if (frame_count >= WINDOW_SIZE && ric_cov(1) > 0.25)
     {
         calib_ric_result = ric;

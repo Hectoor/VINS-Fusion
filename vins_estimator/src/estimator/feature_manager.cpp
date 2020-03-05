@@ -48,7 +48,8 @@ int FeatureManager::getFeatureCount()
     return cnt;
 }
 
-
+// 检查新进来这一帧和上一帧的视差怎么样，如果视差大的话，
+// 就可以算是关键帧，则把滑动窗口中最老的帧丢掉
 bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)
 {
     ROS_DEBUG("input feature: %d", (int)image.size());
@@ -59,52 +60,62 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     last_average_parallax = 0;
     new_feature_num = 0;
     long_track_num = 0;
+    //遍历所有特征点
     for (auto &id_pts : image)
     {
+        //按照格式存进FeaturePerFrame类里，方便后续操作
         FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
+        //作用是如果它的条件返回错误，则终止程序执行？？意思是id要从零开始吗？
         assert(id_pts.second[0].first == 0);
+        //双目的话
         if(id_pts.second.size() == 2)
         {
+            //把右目的数据也加进f_per_fra去
             f_per_fra.rightObservation(id_pts.second[1].second);
             assert(id_pts.second[1].first == 1);
         }
 
         int feature_id = id_pts.first;
+        //feature中存放着滑窗的特征点库，下面这句话的意思就是寻找当前帧特征点是否在已有的特征点库
         auto it = find_if(feature.begin(), feature.end(), [feature_id](const FeaturePerId &it)
                           {
             return it.feature_id == feature_id;
                           });
-
+        //如果没找到ID，则把这个特征点加进特征点库中
         if (it == feature.end())
         {
             feature.push_back(FeaturePerId(feature_id, frame_count));
             feature.back().feature_per_frame.push_back(f_per_fra);
             new_feature_num++;
         }
+        //如果找到了ID！跟踪到的角点数量last_track+1
         else if (it->feature_id == feature_id)
         {
             it->feature_per_frame.push_back(f_per_fra);
             last_track_num++;
+            //连续四帧都看到这个点?
             if( it-> feature_per_frame.size() >= 4)
                 long_track_num++;
         }
     }
-
+    //如果滑窗只有两帧，而且跟踪数低于20个点，连续四帧看到的点少于<40，
+    // 特征点数量大于跟踪到的点的一半，则说明有视差
     //if (frame_count < 2 || last_track_num < 20)
     //if (frame_count < 2 || last_track_num < 20 || new_feature_num > 0.5 * last_track_num)
     if (frame_count < 2 || last_track_num < 20 || long_track_num < 40 || new_feature_num > 0.5 * last_track_num)
         return true;
-
+    //
     for (auto &it_per_id : feature)
     {
         if (it_per_id.start_frame <= frame_count - 2 &&
             it_per_id.start_frame + int(it_per_id.feature_per_frame.size()) - 1 >= frame_count - 1)
         {
+            //计算每个特征点的视差
             parallax_sum += compensatedParallax2(it_per_id, frame_count);
             parallax_num++;
         }
     }
-
+    //
     if (parallax_num == 0)
     {
         return true;
@@ -255,7 +266,7 @@ bool FeatureManager::solvePoseByPnP(Eigen::Matrix3d &R, Eigen::Vector3d &P,
 
     return true;
 }
-
+//初始化位姿PnP  PnP是求解3D-2D点对运动的方法（知道n个空间三维点，如何估计相机位姿）
 void FeatureManager::initFramePoseByPnP(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vector3d tic[], Matrix3d ric[])
 {
 
@@ -263,14 +274,18 @@ void FeatureManager::initFramePoseByPnP(int frameCnt, Vector3d Ps[], Matrix3d Rs
     {
         vector<cv::Point2f> pts2D;
         vector<cv::Point3f> pts3D;
+        //遍历所有特征点
         for (auto &it_per_id : feature)
         {
-            if (it_per_id.estimated_depth > 0)
+            if (it_per_id.estimated_depth > 0)  //当特征点有深度值（三角化后）
             {
                 int index = frameCnt - it_per_id.start_frame;
                 if((int)it_per_id.feature_per_frame.size() >= index + 1)
                 {
+                    // ric[0]代表第一帧中世界坐标系转到相机坐标系的旋转矩阵
+                    // 归一化点坐标乘深度得到空间的坐标_
                     Vector3d ptsInCam = ric[0] * (it_per_id.feature_per_frame[0].point * it_per_id.estimated_depth) + tic[0];
+                    //旋转＋位移 得到三维点的坐标
                     Vector3d ptsInWorld = Rs[it_per_id.start_frame] * ptsInCam + Ps[it_per_id.start_frame];
 
                     cv::Point3f point3d(ptsInWorld.x(), ptsInWorld.y(), ptsInWorld.z());
@@ -282,17 +297,18 @@ void FeatureManager::initFramePoseByPnP(int frameCnt, Vector3d Ps[], Matrix3d Rs
         }
         Eigen::Matrix3d RCam;
         Eigen::Vector3d PCam;
-        // trans to w_T_cam
+        // trans to w_T_cam 由世界坐标系转到相机坐标系
         RCam = Rs[frameCnt - 1] * ric[0];
         PCam = Rs[frameCnt - 1] * tic[0] + Ps[frameCnt - 1];
 
+        //用PnP来解两帧相机的位姿
         if(solvePoseByPnP(RCam, PCam, pts2D, pts3D))
         {
             // trans to w_T_imu
             Rs[frameCnt] = RCam * ric[0].transpose(); 
             Ps[frameCnt] = -RCam * ric[0].transpose() * tic[0] + PCam;
 
-            Eigen::Quaterniond Q(Rs[frameCnt]);
+            Eigen::Quaterniond Q(Rs[frameCnt]); //测试用
             //cout << "frameCnt: " << frameCnt <<  " pnp Q " << Q.w() << " " << Q.vec().transpose() << endl;
             //cout << "frameCnt: " << frameCnt << " pnp P " << Ps[frameCnt].transpose() << endl;
         }
@@ -526,27 +542,29 @@ void FeatureManager::removeFront(int frame_count)
         }
     }
 }
-
+//計算每一个点的视差 视差简单来说就是特征点在左右两帧图像对应位置的差距
 double FeatureManager::compensatedParallax2(const FeaturePerId &it_per_id, int frame_count)
 {
     //check the second last frame is keyframe or not
     //parallax betwwen seconde last frame and third last frame
     const FeaturePerFrame &frame_i = it_per_id.feature_per_frame[frame_count - 2 - it_per_id.start_frame];
     const FeaturePerFrame &frame_j = it_per_id.feature_per_frame[frame_count - 1 - it_per_id.start_frame];
-
+    //视差结果
     double ans = 0;
     Vector3d p_j = frame_j.point;
 
     double u_j = p_j(0);
     double v_j = p_j(1);
-
+    //个人觉得这里的p_i_comp指的是该点的补偿，也就是给该点增加不确定度（像素位置的准确性）
+    //所以下面就是计算了两遍，一个是非补偿的（直接算），另一个是补偿的，由于这里补偿的没有增加偏移（不确定度）
+    //所以两次计算是一样的
     Vector3d p_i = frame_i.point;
     Vector3d p_i_comp;
 
     //int r_i = frame_count - 2;
     //int r_j = frame_count - 1;
     //p_i_comp = ric[camera_id_j].transpose() * Rs[r_j].transpose() * Rs[r_i] * ric[camera_id_i] * p_i;
-    p_i_comp = p_i;
+    p_i_comp = p_i; //把p_i赋值给p_i_comp？为什么要这么做
     double dep_i = p_i(2);
     double u_i = p_i(0) / dep_i;
     double v_i = p_i(1) / dep_i;
