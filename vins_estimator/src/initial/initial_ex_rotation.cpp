@@ -43,6 +43,7 @@ bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> c
         Quaterniond r2(Rc_g[i]);
         //这里就是计算Rc_g和Rc相差多少度 相差太大的话Huber权重就低
         //angularDistance函数是eigen下的函数，可以计算两个四元数的角度
+        // 角度转弧度: π/180×角度 最终的角度距离（残差）是由弧度来度量的
         double angular_distance = 180 / M_PI * r1.angularDistance(r2);
         ROS_DEBUG(
             "%d %f", i, angular_distance);

@@ -181,19 +181,32 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
 
     if (SAVE_LOOP_PATH)
     {
+//        ofstream loop_path_file(VINS_RESULT_PATH, ios::app);
+//        loop_path_file.setf(ios::fixed, ios::floatfield);
+//        loop_path_file.precision(0);
+//        loop_path_file << cur_kf->time_stamp * 1e9 << ",";
+//        loop_path_file.precision(5);
+//        loop_path_file  << P.x() << ","
+//              << P.y() << ","
+//              << P.z() << ","
+//              << Q.w() << ","
+//              << Q.x() << ","
+//              << Q.y() << ","
+//              << Q.z() << ","
+//              << endl;
         ofstream loop_path_file(VINS_RESULT_PATH, ios::app);
         loop_path_file.setf(ios::fixed, ios::floatfield);
         loop_path_file.precision(0);
-        loop_path_file << cur_kf->time_stamp * 1e9 << ",";
+        loop_path_file << cur_kf->time_stamp << " ";
         loop_path_file.precision(5);
-        loop_path_file  << P.x() << ","
-              << P.y() << ","
-              << P.z() << ","
-              << Q.w() << ","
-              << Q.x() << ","
-              << Q.y() << ","
-              << Q.z() << ","
-              << endl;
+        loop_path_file  << P.x() << " "
+                        << P.y() << " "
+                        << P.z() << " "
+                        << Q.x() << " "
+                        << Q.y() << " "
+                        << Q.z() << " "
+                        << Q.w() << endl;
+
         loop_path_file.close();
     }
     //draw local connection
@@ -828,19 +841,31 @@ void PoseGraph::updatePath()
 
         if (SAVE_LOOP_PATH)
         {
+//            ofstream loop_path_file(VINS_RESULT_PATH, ios::app);
+//            loop_path_file.setf(ios::fixed, ios::floatfield);
+//            loop_path_file.precision(0);
+//            loop_path_file << (*it)->time_stamp * 1e9 << ",";
+//            loop_path_file.precision(5);
+//            loop_path_file  << P.x() << ","
+//                  << P.y() << ","
+//                  << P.z() << ","
+//                  << Q.w() << ","
+//                  << Q.x() << ","
+//                  << Q.y() << ","
+//                  << Q.z() << ","
+//                  << endl;
             ofstream loop_path_file(VINS_RESULT_PATH, ios::app);
             loop_path_file.setf(ios::fixed, ios::floatfield);
             loop_path_file.precision(0);
-            loop_path_file << (*it)->time_stamp * 1e9 << ",";
+            loop_path_file << (*it)->time_stamp << " ";
             loop_path_file.precision(5);
-            loop_path_file  << P.x() << ","
-                  << P.y() << ","
-                  << P.z() << ","
-                  << Q.w() << ","
-                  << Q.x() << ","
-                  << Q.y() << ","
-                  << Q.z() << ","
-                  << endl;
+            loop_path_file  << P.x() << " "
+                            << P.y() << " "
+                            << P.z() << " "
+                            << Q.x() << " "
+                            << Q.y() << " "
+                            << Q.z() << " "
+                            << Q.w() << endl;
             loop_path_file.close();
         }
         //draw local connection
@@ -900,9 +925,11 @@ void PoseGraph::savePoseGraph()
     TicToc tmp_t;
     FILE *pFile;
     printf("pose graph path: %s\n",POSE_GRAPH_SAVE_PATH.c_str());
+    //下面某语句会段错误？
     printf("pose graph saving... \n");
     string file_path = POSE_GRAPH_SAVE_PATH + "pose_graph.txt";
-    pFile = fopen (file_path.c_str(),"w");
+    pFile = fopen (file_path.c_str(),"w+");
+
     //fprintf(pFile, "index time_stamp Tx Ty Tz Qw Qx Qy Qz loop_index loop_info\n");
     list<KeyFrame*>::iterator it;
     for (it = keyframelist.begin(); it != keyframelist.end(); it++)
@@ -917,13 +944,18 @@ void PoseGraph::savePoseGraph()
         Quaterniond PG_tmp_Q{(*it)->R_w_i};
         Vector3d VIO_tmp_T = (*it)->vio_T_w_i;
         Vector3d PG_tmp_T = (*it)->T_w_i;
+//        fprintf (pFile, "%d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d %f %f %f %f %f %f %f %f %d\n" ,(*it)->index, (*it)->time_stamp,VIO_tmp_T.x(), VIO_tmp_T.y(), VIO_tmp_T.z(),
+//                 PG_tmp_T.x(), PG_tmp_T.y(), PG_tmp_T.z(),VIO_tmp_Q.w(), VIO_tmp_Q.x(), VIO_tmp_Q.y(), VIO_tmp_Q.z(),
+//                 PG_tmp_Q.w(), PG_tmp_Q.x(), PG_tmp_Q.y(), PG_tmp_Q.z(),(*it)->loop_index,
+//                 (*it)->loop_info(0), (*it)->loop_info(1), (*it)->loop_info(2), (*it)->loop_info(3),
+//                 (*it)->loop_info(4), (*it)->loop_info(5), (*it)->loop_info(6), (*it)->loop_info(7));
 
-        fprintf (pFile, " %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d %f %f %f %f %f %f %f %f %d\n",(*it)->index, (*it)->time_stamp, 
-                                    VIO_tmp_T.x(), VIO_tmp_T.y(), VIO_tmp_T.z(), 
-                                    PG_tmp_T.x(), PG_tmp_T.y(), PG_tmp_T.z(), 
-                                    VIO_tmp_Q.w(), VIO_tmp_Q.x(), VIO_tmp_Q.y(), VIO_tmp_Q.z(), 
-                                    PG_tmp_Q.w(), PG_tmp_Q.x(), PG_tmp_Q.y(), PG_tmp_Q.z(), 
-                                    (*it)->loop_index, 
+        fprintf (pFile, " %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d %f %f %f %f %f %f %f %f %d\n",(*it)->index, (*it)->time_stamp,
+                                    VIO_tmp_T.x(), VIO_tmp_T.y(), VIO_tmp_T.z(),
+                                    PG_tmp_T.x(), PG_tmp_T.y(), PG_tmp_T.z(),
+                                    VIO_tmp_Q.w(), VIO_tmp_Q.x(), VIO_tmp_Q.y(), VIO_tmp_Q.z(),
+                                    PG_tmp_Q.w(), PG_tmp_Q.x(), PG_tmp_Q.y(), PG_tmp_Q.z(),
+                                    (*it)->loop_index,
                                     (*it)->loop_info(0), (*it)->loop_info(1), (*it)->loop_info(2), (*it)->loop_info(3),
                                     (*it)->loop_info(4), (*it)->loop_info(5), (*it)->loop_info(6), (*it)->loop_info(7),
                                     (int)(*it)->keypoints.size());
