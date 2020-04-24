@@ -71,7 +71,7 @@ cv::Mat getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
 
 // extract images with same timestamp from two topics
 // 这个函数是从相机topic中拿适合的图像数据，
-// 双目的话两帧满足时间相距小于0.003秒就可以把两帧的图像都获取下来，
+// 双目的话两帧满足时间相距小于0.003秒就可以把两帧的图像都获取下来，同步时间
 // 这两帧会用于后续的处理
 // 这一步其实就是用来筛选图片
 void sync_process()
@@ -115,7 +115,7 @@ void sync_process()
                     img0_buf.pop();
                     image1 = getImageFromMsg(img1_buf.front());
                     img1_buf.pop();
-                    //printf("find img0 and img1\n");
+                    //printf("find img0 and img1\n"); //是可以打印的，说明有
                 }
             }
             //取完数据就解锁啦，相当于告诉相机topic，你可以继续捕获图像并放把数据放进buf啦

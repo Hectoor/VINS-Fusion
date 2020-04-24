@@ -90,18 +90,19 @@ double FeatureTracker::distance(cv::Point2f &pt1, cv::Point2f &pt2)
     double dy = pt1.y - pt2.y;
     return sqrt(dx * dx + dy * dy);
 }
-//跟踪
+// 对图片进行一系列操作，返回特征点featureFrame。
+// 其中还包含了：图像处理、区域mask、检测特征点、计算像素速度等
 map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackImage(double _cur_time, const cv::Mat &_img, const cv::Mat &_img1)
 {
-    TicToc t_r;
+    TicToc t_r; //记录时间
     cur_time = _cur_time;
     cur_img = _img;
     row = cur_img.rows;
     col = cur_img.cols;
     cv::Mat rightImg = _img1;
-    /*
+    /*TODO: 这里使用来做图像处理的！！！
     {
-        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0, cv::Size(8, 8));
+        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0, cv::Size(8, 8));直方图均衡
         clahe->apply(cur_img, cur_img);
         if(!rightImg.empty())
             clahe->apply(rightImg, rightImg);
@@ -109,6 +110,7 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
     */
     cur_pts.clear();
 
+    // --------------如果上一帧有特征点，就直接进行LK追踪
     if (prev_pts.size() > 0)
     {
         TicToc t_o;
@@ -116,31 +118,35 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
         vector<float> err;
         if(hasPrediction)
         {
-            cur_pts = predict_pts;
-            cv::calcOpticalFlowPyrLK(prev_img, cur_img, prev_pts, cur_pts, status, err, cv::Size(21, 21), 1, 
+            cur_pts = predict_pts; //当前的点等于上一次的点
+            cv::calcOpticalFlowPyrLK(prev_img, cur_img, prev_pts, cur_pts, status, err, cv::Size(21, 21), 1,
+            //迭代算法的终止条件
             cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), cv::OPTFLOW_USE_INITIAL_FLOW);
             
-            int succ_num = 0;
+            int succ_num = 0;//成功和上一帧匹配的数目
             for (size_t i = 0; i < status.size(); i++)
             {
                 if (status[i])
                     succ_num++;
             }
-            if (succ_num < 10)
+            if (succ_num < 10)//小于10时，好像会扩大搜索，输入的基于最大金字塔层次数为3
                cv::calcOpticalFlowPyrLK(prev_img, cur_img, prev_pts, cur_pts, status, err, cv::Size(21, 21), 3);
         }
         else
+            //如果没有进行预测的话，直接是基于最大金字塔层次数为3
             cv::calcOpticalFlowPyrLK(prev_img, cur_img, prev_pts, cur_pts, status, err, cv::Size(21, 21), 3);
-        // reverse check
+        // reverse check 方向检查
         if(FLOW_BACK)
         {
             vector<uchar> reverse_status;
             vector<cv::Point2f> reverse_pts = prev_pts;
+            //注意！这里输入的参数和上边的前后是相反的
             cv::calcOpticalFlowPyrLK(cur_img, prev_img, cur_pts, reverse_pts, reverse_status, err, cv::Size(21, 21), 1, 
             cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), cv::OPTFLOW_USE_INITIAL_FLOW);
             //cv::calcOpticalFlowPyrLK(cur_img, prev_img, cur_pts, reverse_pts, reverse_status, err, cv::Size(21, 21), 3); 
             for(size_t i = 0; i < status.size(); i++)
             {
+                //如果前后都能找到，并且找到的点的距离小于0.5
                 if(status[i] && reverse_status[i] && distance(prev_pts[i], reverse_pts[i]) <= 0.5)
                 {
                     status[i] = 1;
@@ -151,7 +157,7 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
         }
         
         for (int i = 0; i < int(cur_pts.size()); i++)
-            if (status[i] && !inBorder(cur_pts[i]))
+            if (status[i] && !inBorder(cur_pts[i])) // 如果这个点不在图像内，则剔除
                 status[i] = 0;
         reduceVector(prev_pts, status);
         reduceVector(cur_pts, status);
@@ -503,17 +509,17 @@ void FeatureTracker::setPrediction(map<int, Eigen::Vector3d> &predictPts)
     predict_pts.clear();
     predict_pts_debug.clear();
     map<int, Eigen::Vector3d>::iterator itPredict;
-    for (size_t i = 0; i < ids.size(); i++)
+    for (size_t i = 0; i < ids.size(); i++)// 对维护的用于跟踪的所有路标点编号进行遍历
     {
         //printf("prevLeftId size %d prevLeftPts size %d\n",(int)prevLeftIds.size(), (int)prevLeftPts.size());
         int id = ids[i];
         itPredict = predictPts.find(id);
-        if (itPredict != predictPts.end())
+        if (itPredict != predictPts.end())// 若该路标点进行了预测
         {
             Eigen::Vector2d tmp_uv;
-            m_camera[0]->spaceToPlane(itPredict->second, tmp_uv);
-            predict_pts.push_back(cv::Point2f(tmp_uv.x(), tmp_uv.y()));
-            predict_pts_debug.push_back(cv::Point2f(tmp_uv.x(), tmp_uv.y()));
+            m_camera[0]->spaceToPlane(itPredict->second, tmp_uv);//该路标点坐标，从相机坐标系变换到左相机图像坐标系
+            predict_pts.push_back(cv::Point2f(tmp_uv.x(), tmp_uv.y()));//存储左相机图像坐标系下预测的路标点坐标值
+            predict_pts_debug.push_back(cv::Point2f(tmp_uv.x(), tmp_uv.y())); //未预测，采用路标点在上一帧图像位置的坐标
         }
         else
             predict_pts.push_back(prev_pts[i]);

@@ -331,7 +331,7 @@ std::vector<double *> MarginalizationInfo::getParameterBlocks(std::unordered_map
 
     return keep_block_addr;
 }
-
+// 先验残差的损失函数
 MarginalizationFactor::MarginalizationFactor(MarginalizationInfo* _marginalization_info):marginalization_info(_marginalization_info)
 {
     int cnt = 0;

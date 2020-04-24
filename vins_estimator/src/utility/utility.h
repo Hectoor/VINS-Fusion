@@ -74,9 +74,9 @@ class Utility
 
     static Eigen::Vector3d R2ypr(const Eigen::Matrix3d &R)
     {
-        Eigen::Vector3d n = R.col(0);
-        Eigen::Vector3d o = R.col(1);
-        Eigen::Vector3d a = R.col(2);
+        Eigen::Vector3d n = R.col(0);   //左邊這一列
+        Eigen::Vector3d o = R.col(1);   //中間列
+        Eigen::Vector3d a = R.col(2);   //右邊列
 
         Eigen::Vector3d ypr(3);
         double y = atan2(n(1), n(0));
@@ -85,7 +85,7 @@ class Utility
         ypr(0) = y;
         ypr(1) = p;
         ypr(2) = r;
-
+        //弧度转角度
         return ypr / M_PI * 180.0;
     }
 
@@ -97,7 +97,7 @@ class Utility
         Scalar_t y = ypr(0) / 180.0 * M_PI;
         Scalar_t p = ypr(1) / 180.0 * M_PI;
         Scalar_t r = ypr(2) / 180.0 * M_PI;
-
+        //x,y,z轴旋转的角度，转成旋转矩阵的表示方式
         Eigen::Matrix<Scalar_t, 3, 3> Rz;
         Rz << cos(y), -sin(y), 0,
             sin(y), cos(y), 0,

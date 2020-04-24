@@ -59,6 +59,7 @@ class MarginalizationInfo
     ~MarginalizationInfo();
     int localSize(int size) const;
     int globalSize(int size) const;
+    //添加残差块信息
     void addResidualBlockInfo(ResidualBlockInfo *residual_block_info);
     void preMarginalize();
     void marginalize();

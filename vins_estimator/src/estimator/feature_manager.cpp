@@ -33,7 +33,7 @@ void FeatureManager::clearState()
 {
     feature.clear();
 }
-
+// 返回观测次数超过4次的路标点数目
 int FeatureManager::getFeatureCount()
 {
     int cnt = 0;
@@ -240,7 +240,7 @@ bool FeatureManager::solvePoseByPnP(Eigen::Matrix3d &R, Eigen::Vector3d &P,
         return false;
     }
     cv::Mat r, rvec, t, D, tmp_r;
-    cv::eigen2cv(R_initial, tmp_r);
+    cv::eigen2cv(R_initial, tmp_r); //把eigen矩阵转成cv矩阵
     cv::Rodrigues(tmp_r, rvec);
     cv::eigen2cv(P_initial, t);
     cv::Mat K = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);  
@@ -462,7 +462,7 @@ void FeatureManager::removeOutlier(set<int> &outlierIndex)
         }
     }
 }
-
+// 把最老帧的特征点深度值转移到第二帧？
 void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3d marg_P, Eigen::Matrix3d new_R, Eigen::Vector3d new_P)
 {
     for (auto it = feature.begin(), it_next = feature.begin();

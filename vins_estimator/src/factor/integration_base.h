@@ -81,6 +81,7 @@ class IntegrationBase
         result_linearized_ba = linearized_ba;
         result_linearized_bg = linearized_bg;         
 
+        //更新误差传递的协方差矩阵
         if(update_jacobian)
         {
             Vector3d w_x = 0.5 * (_gyr_0 + _gyr_1) - linearized_bg;
@@ -150,6 +151,7 @@ class IntegrationBase
         Vector3d result_linearized_ba;
         Vector3d result_linearized_bg;
         //中值积分
+        //linearized_ba,linearized_bg,acc_0,gyr_0,delta_p,delta_q,delta_v都是上一时刻的值
         midPointIntegration(_dt, acc_0, gyr_0, _acc_1, _gyr_1, delta_p, delta_q, delta_v,
                             linearized_ba, linearized_bg,
                             result_delta_p, result_delta_q, result_delta_v,
@@ -161,6 +163,7 @@ class IntegrationBase
         delta_p = result_delta_p;
         delta_q = result_delta_q;
         delta_v = result_delta_v;
+        //bias的传递，默认是等于上一时刻的bias
         linearized_ba = result_linearized_ba;
         linearized_bg = result_linearized_bg;
         delta_q.normalize();

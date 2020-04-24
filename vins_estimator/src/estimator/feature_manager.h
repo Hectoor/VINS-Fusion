@@ -59,23 +59,22 @@ class FeaturePerFrame
     Vector2d velocity, velocityRight;
     bool is_stereo;
 };
-
+//每个特征点的参数
 class FeaturePerId
 {
   public:
-    const int feature_id;
-    int start_frame;
-    vector<FeaturePerFrame> feature_per_frame;
-    int used_num;
-    double estimated_depth;
+    const int feature_id;   //ID
+    int start_frame;        //最开始出现的帧
+    vector<FeaturePerFrame> feature_per_frame;  //
+    int used_num;           //使用的次数
+    double estimated_depth; //估计深度
     int solve_flag; // 0 haven't solve yet; 1 solve succ; 2 solve fail;
-
+    // 冒号:后面表示初始化值
     FeaturePerId(int _feature_id, int _start_frame)
         : feature_id(_feature_id), start_frame(_start_frame),
           used_num(0), estimated_depth(-1.0), solve_flag(0)
     {
     }
-
     int endFrame();
 };
 //特征管理器类
@@ -104,7 +103,7 @@ class FeatureManager
     void removeBack();
     void removeFront(int frame_count);
     void removeOutlier(set<int> &outlierIndex);
-    list<FeaturePerId> feature;
+    list<FeaturePerId> feature; //所有特征点ID
     int last_track_num;
     double last_average_parallax;
     int new_feature_num;

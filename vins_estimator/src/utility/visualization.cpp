@@ -152,7 +152,7 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
         path.poses.push_back(pose_stamped);
         pub_path.publish(path);
 
-        // write result to file
+        // write result to file 把结果写进文件里
         ofstream foutC(VINS_RESULT_PATH, ios::app);
         foutC.setf(ios::fixed, ios::floatfield);
         foutC.precision(0);
@@ -174,7 +174,7 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
                                                           tmp_Q.w(), tmp_Q.x(), tmp_Q.y(), tmp_Q.z());
     }
 }
-
+//传给rviz,pose_graph没有用到
 void pubKeyPoses(const Estimator &estimator, const std_msgs::Header &header)
 {
     if (estimator.key_poses.size() == 0)
@@ -251,7 +251,7 @@ void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header)
     point_cloud.header = header;
     loop_point_cloud.header = header;
 
-
+    //所有特征点
     for (auto &it_per_id : estimator.f_manager.feature)
     {
         int used_num;
@@ -353,7 +353,7 @@ void pubTF(const Estimator &estimator, const std_msgs::Header &header)
     pub_extrinsic.publish(odometry);
 
 }
-
+//发布Keyframe的特征点和pose，这一部分pose_gragh需要用到
 void pubKeyframe(const Estimator &estimator)
 {
     // pub camera pose, 2D-3D points of keyframe
@@ -409,6 +409,7 @@ void pubKeyframe(const Estimator &estimator)
             }
 
         }
+        //发布 keyframe的feature point
         pub_keyframe_point.publish(point_cloud);
     }
 }

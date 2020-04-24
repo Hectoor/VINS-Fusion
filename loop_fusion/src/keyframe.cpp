@@ -32,7 +32,7 @@ KeyFrame::KeyFrame(double _time_stamp, int _index, Vector3d &_vio_T_w_i, Matrix3
 	vio_R_w_i = _vio_R_w_i;
 	T_w_i = vio_T_w_i;
 	R_w_i = vio_R_w_i;
-	origin_vio_T = vio_T_w_i;		
+	origin_vio_T = vio_T_w_i;
 	origin_vio_R = vio_R_w_i;
 	image = _image.clone();
 	cv::resize(image, thumbnail, cv::Size(80, 60));
@@ -284,7 +284,7 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 
 	TicToc t_match;
 	#if 0
-		if (DEBUG_IMAGE)    
+		if (DEBUG_IMAGE)
 	    {
 	        cv::Mat gray_img, loop_match_img;
 	        cv::Mat old_img = old_kf->image;
@@ -318,7 +318,7 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	reduceVector(matched_id, status);
 	//printf("search by des finish\n");
 
-	#if 0 
+	#if 0
 		if (DEBUG_IMAGE)
 	    {
 			int gap = 10;
@@ -467,8 +467,8 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	            if ((int)matched_2d_cur.size() > MIN_LOOP_NUM)
 	            {
 	            	/*
-	            	cv::imshow("loop connection",loop_match_img);  
-	            	cv::waitKey(10);  
+	            	cv::imshow("loop connection",loop_match_img);
+	            	cv::waitKey(10);
 	            	*/
 	            	cv::Mat thumbimage;
 	            	cv::resize(loop_match_img, thumbimage, cv::Size(loop_match_img.cols / 2, loop_match_img.rows / 2));
